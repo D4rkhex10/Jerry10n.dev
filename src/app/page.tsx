@@ -139,6 +139,7 @@ const EXPERTISE = [
 
 export default function Portfolio() {
   const [activeProject, setActiveProject] = useState("meridex");
+  const [formStatus, setFormStatus] = useState<"idle"|"sending"|"sent"|"error">("idle");
 
   return (
     <div className="min-h-screen w-full relative">
@@ -375,15 +376,22 @@ export default function Portfolio() {
         <div className="flex-1 relative z-10 w-full max-w-md border-2 border-[#1A0B1A] p-8 md:p-10 bg-[#F0EFEA] text-[#111]">
           <form
             className="flex flex-col gap-8"
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
+              setFormStatus("sending");
               const form = e.currentTarget;
               const name = (form.elements.namedItem("name") as HTMLInputElement).value;
               const email = (form.elements.namedItem("email") as HTMLInputElement).value;
               const details = (form.elements.namedItem("details") as HTMLTextAreaElement).value;
-              const subject = encodeURIComponent(`New Inquiry from ${name}`);
-              const body = encodeURIComponent(`Name: ${name}\nEmail: ${email}\n\nProject Details:\n${details}`);
-              window.location.href = `mailto:jerry@studio10n.com?subject=${subject}&body=${body}`;
+              try {
+                const res = await fetch("/api/contact", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ name, email, details }),
+                });
+                if (res.ok) { setFormStatus("sent"); form.reset(); }
+                else setFormStatus("error");
+              } catch { setFormStatus("error"); }
             }}
           >
             <div className="border-b-2 border-black pb-2">
@@ -398,8 +406,8 @@ export default function Portfolio() {
               <label className="text-xs font-bold uppercase tracking-widest text-[#111]/60 block mb-2">Project Details</label>
               <textarea name="details" placeholder="Tell me about your goals..." rows={3} required className="w-full bg-transparent outline-none text-xl font-bold placeholder:text-black/20 text-black resize-none" />
             </div>
-            <button type="submit" className="bg-[#CEFF00] border-2 border-black text-black w-full py-4 text-sm font-bold uppercase tracking-widest hover:bg-[#1A0B1A] hover:text-[#CEFF00] transition-colors mt-4">
-              Send Message
+            <button type="submit" disabled={formStatus==="sending"||formStatus==="sent"} className="bg-[#CEFF00] border-2 border-black text-black w-full py-4 text-sm font-bold uppercase tracking-widest hover:bg-[#1A0B1A] hover:text-[#CEFF00] transition-colors mt-4 disabled:opacity-60 disabled:cursor-not-allowed">
+              {formStatus==="sending" ? "Sending..." : formStatus==="sent" ? "✓ Message Sent!" : formStatus==="error" ? "Error — Try Again" : "Send Message"}
             </button>
           </form>
         </div>
